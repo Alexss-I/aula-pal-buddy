@@ -65,13 +65,11 @@ export const Route = createFileRoute("/api/study-chat")({
               onError: (e) =>
                 e instanceof Error ? e.message : "No pudimos completar la respuesta.",
               onFinish: async ({ messages: finished }) => {
-                const { error } = await client
-                  .from("aulaplus_conversations")
-                  .upsert({
-                    user_id: user.id,
-                    notebook_id: input.notebookId,
-                    messages: JSON.parse(JSON.stringify(finished)),
-                  });
+                const { error } = await client.from("aulaplus_conversations").upsert({
+                  user_id: user.id,
+                  notebook_id: input.notebookId,
+                  messages: JSON.parse(JSON.stringify(finished)),
+                });
                 if (error) throw new Error("La respuesta no pudo guardarse.");
               },
             }),
