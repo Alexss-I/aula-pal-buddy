@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      aulaplus_conversations: {
+        Row: {
+          messages: Json
+          notebook_id: string
+          user_id: string
+        }
+        Insert: {
+          messages?: Json
+          notebook_id: string
+          user_id: string
+        }
+        Update: {
+          messages?: Json
+          notebook_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       aulaplus_workspaces: {
         Row: {
           state: Json
