@@ -222,13 +222,11 @@ export function AulaPlus() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from("aulaplus_workspaces")
-      .upsert({
-        user_id: userId,
-        state: JSON.parse(JSON.stringify(workspace)),
-        updated_at: new Date().toISOString(),
-      });
+    const { error } = await supabase.from("aulaplus_workspaces").upsert({
+      user_id: userId,
+      state: JSON.parse(JSON.stringify(workspace)),
+      updated_at: new Date().toISOString(),
+    });
     setSaving(false);
     if (error) toast.error("No pudimos guardar. Inténtalo de nuevo.");
     else toast.success("Todos tus avances están guardados.");
