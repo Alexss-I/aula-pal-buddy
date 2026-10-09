@@ -81,15 +81,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "AulaPlus" },
       { name: "description", content: "Cada pequeño paso, una gran aventura de aprendizaje." },
-      
+
       { property: "og:title", content: "AulaPlus" },
-      { property: "og:description", content: "Cada pequeño paso, una gran aventura de aprendizaje." },
+      {
+        property: "og:description",
+        content: "Cada pequeño paso, una gran aventura de aprendizaje.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      
     ],
     links: [
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap",
+      },
       {
         rel: "stylesheet",
         href: appCss,

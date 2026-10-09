@@ -14,8 +14,10 @@ export function createResponsesCall(
   instructions?: string,
 ) {
   const runIdFetch = createLovableAiGatewayRunIdFetch(getLovableAiGatewayRunId(request));
-  let resolveUpstream: (value: {status:number;error?:string}) => void = () => {};
-  const upstream = new Promise<{status:number;error?:string}>(resolve => {resolveUpstream=resolve;});
+  let resolveUpstream: (value: { status: number; error?: string }) => void = () => {};
+  const upstream = new Promise<{ status: number; error?: string }>((resolve) => {
+    resolveUpstream = resolve;
+  });
   const provider = createOpenAI({
     baseURL: `${config.baseURL.replace(/\/+$/, "").replace(/\/v1$/, "")}/v1`,
     apiKey: config.apiKey,
@@ -24,11 +26,23 @@ export function createResponsesCall(
       try {
         const response = await runIdFetch.fetch(input, init);
         if (!response.ok) {
-          const body = await response.clone().json().catch(() => ({}));
-          resolveUpstream({status:response.status,error:body.message || body.error?.message || 'El asistente no está disponible en este momento.'});
-        } else resolveUpstream({status:response.status});
+          const body = await response
+            .clone()
+            .json()
+            .catch(() => ({}));
+          resolveUpstream({
+            status: response.status,
+            error:
+              body.message ||
+              body.error?.message ||
+              "El asistente no está disponible en este momento.",
+          });
+        } else resolveUpstream({ status: response.status });
         return response;
-      } catch (error) {resolveUpstream({status:503,error:'No se pudo conectar con el asistente.'});throw error;}
+      } catch (error) {
+        resolveUpstream({ status: 503, error: "No se pudo conectar con el asistente." });
+        throw error;
+      }
     },
   });
   const reasoning = config.model !== "openai/chat-latest";
@@ -56,8 +70,11 @@ export function createResponsesCall(
   return {
     result,
     upstream,
-    gateway:runIdFetch,
+    gateway: runIdFetch,
     response: () =>
-      withLovableAiGatewayRunIdHeader(result.toUIMessageStreamResponse({ sendReasoning: true }), runIdFetch),
+      withLovableAiGatewayRunIdHeader(
+        result.toUIMessageStreamResponse({ sendReasoning: true }),
+        runIdFetch,
+      ),
   };
 }
