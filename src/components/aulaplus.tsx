@@ -326,8 +326,8 @@ export function AulaPlus() {
             </div>
           </header>
           <main className="page">
-            <ClassroomControls
-              classes={classes} active={activeClass} teacher={role === "teacher"}
+            {role === "teacher" && <ClassroomControls
+              classes={classes} active={activeClass} teacher
               select={(id) => { setActiveId(id); setSelected(null); setFeedback(null); }}
               create={(name) => {
                 const c = createClassroom(crypto.randomUUID(), name);
@@ -336,7 +336,7 @@ export function AulaPlus() {
               }}
               rename={(name) => setClasses((rows) => rows.map((c) => c.id === activeId ? { ...c, name } : c))}
               updateStudents={(update) => setWorkspace((w) => ({ ...w, students: update(w.students) }))}
-            />
+            />}
             {notebook ? (
               <NotebookView
                 key={notebook.id}

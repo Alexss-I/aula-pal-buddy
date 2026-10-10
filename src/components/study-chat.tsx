@@ -14,13 +14,15 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import type { Notebook } from "@/lib/aulaplus";
 import mascot from "@/assets/mascot.png";
+import { tutorReply } from "@/lib/tutor";
 
 type ChatMsg = { id: string; role: "user" | "assistant"; text: string };
 
 // Conversaciones en memoria por cuaderno (se mantienen mientras la página esté abierta).
 const memory = new Map<string, ChatMsg[]>();
 
-function mockReply(question: string, n: Notebook) {
+function mockReply(question: string, n: Notebook) { return tutorReply(question, n.notes, n.name); }
+function _old(question: string, n: Notebook) {
   const first = n.notes.split(".")[0]?.trim();
   return `¡Buena pregunta sobre **${n.name}**! 🌱\n\nSegún tus apuntes: _${first || "aún no tienes apuntes"}_.\n\nVamos paso a paso:\n1. Lee de nuevo la idea principal.\n2. Escribe con tus palabras qué significa "${question.slice(0, 60)}".\n3. Busca un ejemplo de la vida diaria.\n\n¿Me cuentas qué entendiste del paso 1? *(Respuesta de demostración)*`;
 }
