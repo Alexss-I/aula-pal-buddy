@@ -49,3 +49,17 @@ describe("Independent classrooms", () => {
     expect(updated[1]?.workspace.notebooks[0]?.points).toBe(24);
   });
 });
+
+import { tutorReply, solveMath } from "@/lib/tutor";
+describe("tutor general", () => {
+  it("resuelve 2*2 aunque haya apuntes", () => {
+    expect(solveMath("cuánto es 2*2")?.result).toBe(4);
+    expect(tutorReply("cuánto es 2*2", "Las fracciones son partes.", "Historia")).toContain("= 4");
+  });
+  it("explica la fotosíntesis sin apuntes", () => {
+    expect(tutorReply("explícame la fotosíntesis", "", "Matemáticas")).toContain("clorofila");
+  });
+  it("da consejos de estudio", () => {
+    expect(tutorReply("dame un consejo de estudio", "", "Arte")).toContain("Pomodoro");
+  });
+});
