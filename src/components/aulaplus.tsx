@@ -52,9 +52,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import mascot from "@/assets/mascot.png";
+import { Pet, speciesLabels } from "./pet";
+export { Pet } from "./pet";
+import { ThemeSettings } from "./theme-settings";
+import { ClassroomControls } from "./classroom-controls";
 import {
-  initialWorkspace,
+  createInitialClassrooms,
+  createClassroom,
+  updateClassWorkspace,
+  petSpecies,
+  petNames,
+  type PetSpecies,
   evaluate,
   petLevel,
   makeGroups,
@@ -69,18 +77,6 @@ import { StudyChat } from "./study-chat";
 
 const icons = [Calculator, Leaf, MessageCircle, Landmark];
 const tones = ["mint", "sky", "peach", "lilac"];
-export function Pet({ tone = "mint", className = "" }: { tone?: string; className?: string }) {
-  return (
-    <img
-      src={mascot}
-      width={1024}
-      height={1024}
-      loading="lazy"
-      alt="Mascota de aprendizaje"
-      className={`pet ${tone} ${className}`}
-    />
-  );
-}
 export function Logo() {
   return (
     <div className="logo">
@@ -138,7 +134,12 @@ function Modal({
 }
 
 export function AulaPlus() {
-  const [workspace, setWorkspace] = useState<Workspace>(initialWorkspace);
+  const [classes, setClasses] = useState(createInitialClassrooms);
+  const [activeId, setActiveId] = useState("class-0");
+  const activeClass = classes.find((c) => c.id === activeId) ?? classes[0];
+  const workspace = activeClass?.workspace;
+  const setWorkspace = (update: (w: Workspace) => Workspace) =>
+    setClasses((rows) => updateClassWorkspace(rows, activeId, update));
   const [role, setRole] = useState<Role>("student");
   const [roleModal, setRoleModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -148,6 +149,7 @@ export function AulaPlus() {
   const [create, setCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [tone, setTone] = useState("mint");
+  const [species, setSpecies] = useState<PetSpecies>("monster");
   const [help, setHelp] = useState(false);
   const [userName] = useState("Alex");
   const [saving, setSaving] = useState(false);
@@ -178,6 +180,7 @@ export function AulaPlus() {
     setSelected(null);
     setRoleModal(false);
   };
+  if (!activeClass || !workspace) return null;
   const updateNotebook = (nb: Notebook) =>
     setWorkspace((w) => ({ ...w, notebooks: w.notebooks.map((n) => (n.id === nb.id ? nb : n)) }));
   const notebook = workspace.notebooks.find((n) => n.id === selected);
@@ -203,7 +206,8 @@ export function AulaPlus() {
       name: newName.trim(),
       subject: "Una nueva aventura por comenzar",
       tone,
-      pet: ["Milo", "Blu", "Coco", "Lumi"][tones.indexOf(tone)] || "Milo",
+      pet: petNames[species],
+      species,
       points: 0,
       streak: 0,
       notes: "",
@@ -263,7 +267,7 @@ export function AulaPlus() {
               </strong>
               <br />
               <small>
-                {role === "student" ? "Estudiante · 6.º grado" : "Profesor · 6.º grado"}
+                {role === "student" ? "Estudiante" : "Profesor"}
               </small>
             </div>
             <Button
@@ -293,6 +297,7 @@ export function AulaPlus() {
               <span className="topbar-title">{pageTitle}</span>
             </div>
             <div className="topbar-actions">
+              <ThemeSettings />
               <Button variant="outline" className="role-pill" onClick={() => setRoleModal(true)}>
                 {role === "student" ? <GraduationCap /> : <School />}
                 {role === "student" ? "Modo estudiante" : "Modo profesor"}
@@ -321,14 +326,27 @@ export function AulaPlus() {
             </div>
           </header>
           <main className="page">
+            <ClassroomControls
+              classes={classes} active={activeClass} teacher={role === "teacher"}
+              select={(id) => { setActiveId(id); setSelected(null); setFeedback(null); }}
+              create={(name) => {
+                const c = createClassroom(crypto.randomUUID(), name);
+                setClasses((rows) => [...rows, c]); setActiveId(c.id); setSelected(null); setNav("class");
+                toast.success(`¡${c.name} está lista!`);
+              }}
+              rename={(name) => setClasses((rows) => rows.map((c) => c.id === activeId ? { ...c, name } : c))}
+              updateStudents={(update) => setWorkspace((w) => ({ ...w, students: update(w.students) }))}
+            />
             {notebook ? (
               <NotebookView
+                key={notebook.id}
                 notebook={notebook}
                 update={updateNotebook}
                 back={() => setSelected(null)}
               />
             ) : nav === "calendar" ? (
               <CalendarView
+                key={activeId}
                 activities={workspace.activities}
                 notebooks={workspace.notebooks}
                 update={(activities) => setWorkspace((w) => ({ ...w, activities }))}
@@ -352,7 +370,7 @@ export function AulaPlus() {
                   </div>
                   <span className="pill mint">
                     <School size={13} />
-                    6.º grado · Aula A
+                    {activeClass.name}
                   </span>
                 </div>
                 <div className="welcome-band">
@@ -379,7 +397,7 @@ export function AulaPlus() {
                     value={workspace.students.reduce((s, n) => s + n.points, 0)}
                     label="Puntos de la clase"
                   />
-                  <Stat icon={Trophy} value="6.º A" label="Mi gran equipo" />
+                  <Stat icon={Trophy} value={activeClass.name} label="Mi gran equipo" />
                 </div>
                 <div className="section-heading">
                   <h2>Mi clase</h2>
@@ -393,7 +411,7 @@ export function AulaPlus() {
                         className="student-select"
                         onClick={() => setFeedback(s)}
                       >
-                        <Pet tone={s.tone} />
+                        <Pet species={petSpecies[workspace.students.indexOf(s) % petSpecies.length] ?? "monster"} />
                         <h3>{s.name}</h3>
                         <span className="pill mint">
                           <Star size={12} />
@@ -405,9 +423,9 @@ export function AulaPlus() {
                 </div>
               </>
             ) : nav === "groups" ? (
-              <GroupsView students={workspace.students} />
+              <GroupsView key={activeId} students={workspace.students} />
             ) : nav === "tools" ? (
-              <ToolsView students={workspace.students} />
+              <ToolsView key={activeId} students={workspace.students} />
             ) : nav === "announcements" ? (
               <Announcements
                 items={workspace.announcements}
@@ -534,7 +552,7 @@ export function AulaPlus() {
                       <div className="mini-pets">
                         {workspace.notebooks.slice(0, 3).map((n) => (
                           <div className="mini-pet" key={n.id}>
-                            <Pet tone={n.tone} />
+                            <Pet species={n.species} tone={n.tone} />
                             <p>{n.pet}</p>
                             <span className="text-[9px] text-muted-foreground">
                               Nivel {petLevel(n.points)}
@@ -609,6 +627,12 @@ export function AulaPlus() {
               maxLength={70}
             />
           </label>
+          <label>Tu compañero de aventura</label>
+          <div className="pet-options">
+            {petSpecies.map((kind) => <Button type="button" variant="outline" key={kind} className={`pet-option ${species === kind ? "selected" : ""}`} onClick={() => setSpecies(kind)} aria-label={speciesLabels[kind]} aria-pressed={species === kind}>
+              <Pet species={kind} /><span>{speciesLabels[kind]}</span>{species === kind && <Check size={14} />}
+            </Button>)}
+          </div>
           <label>Elige un color</label>
           <div className="color-options">
             {tones.map((t) => (
@@ -648,8 +672,7 @@ export function AulaPlus() {
           <details>
             <summary>¿Se guardan mis avances?</summary>
             <p>
-              Entra con Google y pulsa la nube para guardar tus cuadernos, apuntes, tareas y
-              calendario. Sin iniciar sesión puedes explorar el prototipo durante esta visita.
+              Los cambios se conservan durante esta visita. Al recargar, vuelven los datos de muestra.
             </p>
           </details>
           <details>
@@ -779,7 +802,7 @@ function NotebookCard({
           <Star size={10} />
           Nivel {petLevel(n.points)}
         </span>
-        <Pet tone={n.tone} />
+        <Pet species={n.species} tone={n.tone} />
       </div>
       <div className="notebook-body">
         <h3>{n.name}</h3>
@@ -1040,7 +1063,7 @@ function NotebookView({
         </section>
         <aside>
           <div className={`study-pet tone-${n.tone}`}>
-            <Pet tone={n.tone} className={petLevel(n.points) >= 4 ? "evolved" : ""} />
+            <Pet species={n.species} tone={n.tone} className={petLevel(n.points) >= 4 ? "evolved" : ""} />
             <div>
               <span className={`pill ${n.tone}`}>
                 {petLevel(n.points) >= 4
@@ -1095,7 +1118,7 @@ function PetsView({ notebooks, open }: { notebooks: Notebook[]; open: (id: strin
       <div className="notebook-grid">
         {notebooks.map((n) => (
           <article className={`student-tile tone-${n.tone}`} key={n.id}>
-            <Pet tone={n.tone} className={petLevel(n.points) >= 4 ? "evolved" : ""} />
+            <Pet species={n.species} tone={n.tone} className={petLevel(n.points) >= 4 ? "evolved" : ""} />
             <h2>{n.pet}</h2>
             <p className="text-muted-foreground text-xs mt-2">{n.name}</p>
             <Progress points={n.points} name={n.pet} />

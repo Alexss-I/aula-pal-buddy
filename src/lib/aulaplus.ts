@@ -1,4 +1,9 @@
 export type Role = "student" | "teacher";
+export const petSpecies = ["monster", "cat", "owl", "dragon", "bear"] as const;
+export type PetSpecies = (typeof petSpecies)[number];
+export const petNames: Record<PetSpecies, string> = {
+  monster: "Milo", cat: "Cosmo", owl: "Blu", dragon: "Lumi", bear: "Coco",
+};
 export type Evaluation = "Perfecto" | "Bien" | "Necesita Repaso";
 export const evaluationPoints: Record<Evaluation, number> = {
   Perfecto: 2,
@@ -23,6 +28,7 @@ export type Notebook = {
   subject: string;
   tone: string;
   pet: string;
+  species: PetSpecies;
   points: number;
   streak: number;
   notes: string;
@@ -44,6 +50,7 @@ export const initialWorkspace: Workspace = {
       subject: "Números que cuentan historias",
       tone: "mint",
       pet: "Milo",
+      species: "monster",
       points: 24,
       streak: 5,
       notes:
@@ -55,7 +62,8 @@ export const initialWorkspace: Workspace = {
       name: "Ciencias Naturales",
       subject: "Un mundo por descubrir",
       tone: "sky",
-      pet: "Blu",
+      pet: "Cosmo",
+      species: "cat",
       points: 16,
       streak: 3,
       notes:
@@ -67,7 +75,8 @@ export const initialWorkspace: Workspace = {
       name: "Comunicación",
       subject: "Cada palabra es una aventura",
       tone: "peach",
-      pet: "Coco",
+      pet: "Blu",
+      species: "owl",
       points: 32,
       streak: 7,
       notes:
@@ -80,11 +89,18 @@ export const initialWorkspace: Workspace = {
       subject: "Viajes a través del tiempo",
       tone: "lilac",
       pet: "Lumi",
+      species: "dragon",
       points: 12,
       streak: 2,
       notes:
         "Las fuentes históricas nos ayudan a conocer el pasado. Pueden ser escritas, orales o materiales.",
       tasks: [],
+    },
+    {
+      id: "art", name: "Arte y Creatividad", subject: "Ideas que toman color",
+      tone: "peach", pet: "Coco", species: "bear", points: 8, streak: 2,
+      notes: "Los colores primarios son rojo, amarillo y azul. Al mezclarlos obtenemos colores secundarios.",
+      tasks: [{ id: "art1", title: "Crear un dibujo con colores primarios", done: false }],
     },
   ],
   activities: [
@@ -137,3 +153,22 @@ export const initialWorkspace: Workspace = {
     },
   ],
 };
+
+export type Classroom = { id: string; name: string; workspace: Workspace };
+export function createClassroom(id: string, name: string): Classroom {
+  return { id, name: name.trim(), workspace: { notebooks: [], activities: [], students: [], announcements: [] } };
+}
+export function updateClassWorkspace(classes: Classroom[], id: string, update: (w: Workspace) => Workspace) {
+  return classes.map((c) => c.id === id ? { ...c, workspace: update(c.workspace) } : c);
+}
+export function createInitialClassrooms(): Classroom[] {
+  return ['1° Secundaria "A"', '2° Secundaria "B"', '3° Secundaria "C"'].map((name, i) => ({
+    id: `class-${i}`, name,
+    workspace: {
+      notebooks: initialWorkspace.notebooks.map((n) => ({ ...n, id: `class-${i}-${n.id}`, tasks: n.tasks.map((t) => ({ ...t })) })),
+      activities: initialWorkspace.activities.map((a) => ({ ...a, id: `class-${i}-${a.id}` })),
+      students: initialWorkspace.students.slice(i === 0 ? 0 : (i - 1) * 6, i === 0 ? 12 : i * 6).map((s) => ({ ...s, id: `class-${i}-${s.id}` })),
+      announcements: initialWorkspace.announcements.map((a) => ({ ...a, id: `class-${i}-${a.id}` })),
+    },
+  }));
+}
