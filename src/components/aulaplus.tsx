@@ -39,7 +39,6 @@ import {
   Play,
   Pause,
   Save,
-  LogOut,
   Cloud,
   Heart,
   ChevronLeft,
