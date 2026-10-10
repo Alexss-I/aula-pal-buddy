@@ -65,8 +65,6 @@ import {
   type Evaluation,
   type Student,
 } from "@/lib/aulaplus";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
 import { StudyChat } from "./study-chat";
 
@@ -152,8 +150,7 @@ export function AulaPlus() {
   const [newName, setNewName] = useState("");
   const [tone, setTone] = useState("mint");
   const [help, setHelp] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userName, setUserName] = useState("Alex");
+  const [userName] = useState("Alex");
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<Student | null>(null);
   const [notifications, setNotifications] = useState(false);
@@ -165,71 +162,11 @@ export function AulaPlus() {
     }, 650);
     return () => clearTimeout(timeout);
   }, []);
-  useEffect(() => {
-    let active = true;
-    const load = async (id: string, name: string) => {
-      if (!active) return;
-      setUserId(id);
-      setUserName(name.split(" ")[0] || "Alex");
-      const { data, error } = await supabase
-        .from("aulaplus_workspaces")
-        .select("state")
-        .eq("user_id", id)
-        .maybeSingle();
-      if (error) {
-        toast.error("No pudimos recuperar tus avances.");
-        return;
-      }
-      if (
-        active &&
-        data &&
-        typeof data.state === "object" &&
-        data.state &&
-        "notebooks" in data.state
-      ) {
-        setWorkspace(data.state as unknown as Workspace);
-        toast.success("¡Tus avances están de vuelta!");
-      }
-    };
-    void supabase.auth.getUser().then(({ data }) => {
-      if (data.user) void load(data.user.id, data.user.user_metadata["full_name"] || "Alex");
-    });
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN" && session?.user)
-        void load(session.user.id, session.user.user_metadata["full_name"] || "Alex");
-      if (event === "SIGNED_OUT") {
-        setUserId(null);
-        setUserName("Alex");
-        setWorkspace(initialWorkspace);
-      }
-    });
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-  async function signIn() {
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (result.error) toast.error(result.error.message);
-  }
   async function save() {
-    if (!userId) {
-      await signIn();
-      return;
-    }
     setSaving(true);
-    const { error } = await supabase.from("aulaplus_workspaces").upsert({
-      user_id: userId,
-      state: JSON.parse(JSON.stringify(workspace)),
-      updated_at: new Date().toISOString(),
-    });
+    await new Promise((r) => setTimeout(r, 300));
     setSaving(false);
-    if (error) toast.error("No pudimos guardar. Inténtalo de nuevo.");
-    else toast.success("Todos tus avances están guardados.");
+    toast.success("Avances guardados en esta sesión (modo demo).");
   }
   const changeNav = (key: string) => {
     setNav(key);
@@ -323,7 +260,7 @@ export function AulaPlus() {
             <span className="avatar">{userName.slice(0, 1)}</span>
             <div>
               <strong className="text-xs">
-                {userName} {userId ? "" : "Martínez"}
+                {userName} Martínez
               </strong>
               <br />
               <small>
@@ -363,7 +300,7 @@ export function AulaPlus() {
                 <ChevronDown />
               </Button>
               <Button
-                title={userId ? "Guardar avances" : "Guardar con Google"}
+                title="Guardar avances"
                 aria-label="Guardar avances"
                 variant="ghost"
                 size="icon"
@@ -390,8 +327,6 @@ export function AulaPlus() {
                 notebook={notebook}
                 update={updateNotebook}
                 back={() => setSelected(null)}
-                userId={userId}
-                signIn={signIn}
               />
             ) : nav === "calendar" ? (
               <CalendarView
@@ -743,32 +678,14 @@ export function AulaPlus() {
       <Modal
         open={profileOpen}
         onOpenChange={setProfileOpen}
-        title={userId ? `¡Hola, ${userName}!` : "Tu espacio, siempre contigo"}
-        description={
-          userId
-            ? "Guarda tu progreso al terminar de estudiar."
-            : "Conecta Google para guardar tus cuadernos y avances."
-        }
+        title={`¡Hola, ${userName}!`}
+        description="Modo demo: tus cambios viven en esta sesión del navegador."
       >
         <div className="modal-form">
           <Button onClick={() => void save()} disabled={saving}>
             <Cloud />
-            {userId ? "Guardar mis avances" : "Continuar con Google"}
+            Guardar mis avances
           </Button>
-          {userId && (
-            <Button
-              variant="outline"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                setSelected(null);
-                setProfileOpen(false);
-                toast.success("Sesión cerrada");
-              }}
-            >
-              <LogOut />
-              Cerrar sesión
-            </Button>
-          )}
           <span className="text-xs text-muted-foreground">
             Clase y nombres de muestra. El cambio de rol no otorga acceso a otras cuentas.
           </span>
@@ -914,14 +831,10 @@ function NotebookView({
   notebook: n,
   update,
   back,
-  userId,
-  signIn,
 }: {
   notebook: Notebook;
   update: (n: Notebook) => void;
   back: () => void;
-  userId: string | null;
-  signIn: () => Promise<void>;
 }) {
   const [tab, setTab] = useState("chat");
   const [card, setCard] = useState(0);
@@ -978,7 +891,7 @@ function NotebookView({
       <div className="study-layout">
         <section>
           {tab === "chat" ? (
-            <StudyChat key={n.id} notebook={n} userId={userId} signIn={signIn} />
+            <StudyChat key={n.id} notebook={n} />
           ) : tab === "flashcards" ? (
             <>
               <Button variant="ghost" className="flashcard" onClick={() => setFlipped((v) => !v)}>

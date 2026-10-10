@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -14,87 +12,26 @@ import {
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import type { Notebook } from "@/lib/aulaplus";
 import mascot from "@/assets/mascot.png";
-import { toast } from "sonner";
 
-export function StudyChat({
-  notebook,
-  userId,
-  signIn,
-}: {
-  notebook: Notebook;
-  userId: string | null;
-  signIn: () => Promise<void>;
-}) {
-  const [history, setHistory] = useState<UIMessage[] | null>(null);
-  useEffect(() => {
-    let active = true;
-    if (!userId) {
-      setHistory([]);
-      return;
-    }
-    void supabase
-      .from("aulaplus_conversations")
-      .select("messages")
-      .eq("user_id", userId)
-      .eq("notebook_id", notebook.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) toast.error("No pudimos cargar la conversación.");
-        setHistory((data?.messages as unknown as UIMessage[]) || []);
-      });
-    return () => {
-      active = false;
-    };
-  }, [userId, notebook.id]);
-  if (!userId)
-    return (
-      <div className="chat-panel">
-        <div className="chat-empty">
-          <img src={mascot} alt="Milo, tu compañero de estudio" width={1024} height={1024} />
-          <h3>¡Hola! Soy Milo.</h3>
-          <p className="text-muted-foreground text-sm mb-5">
-            ¿Qué descubrimos hoy en {notebook.name}?
-          </p>
-          <Button onClick={() => void signIn()}>Entrar con Google para conversar</Button>
-        </div>
-      </div>
-    );
-  if (!history)
-    return (
-      <div className="chat-panel">
-        <Shimmer>Cargando tu conversación…</Shimmer>
-      </div>
-    );
-  return <ActiveChat key={`${notebook.id}-${userId}`} notebook={notebook} history={history} />;
+type ChatMsg = { id: string; role: "user" | "assistant"; text: string };
+
+// Conversaciones en memoria por cuaderno (se mantienen mientras la página esté abierta).
+const memory = new Map<string, ChatMsg[]>();
+
+function mockReply(question: string, n: Notebook) {
+  const first = n.notes.split(".")[0]?.trim();
+  return `¡Buena pregunta sobre **${n.name}**! 🌱\n\nSegún tus apuntes: _${first || "aún no tienes apuntes"}_.\n\nVamos paso a paso:\n1. Lee de nuevo la idea principal.\n2. Escribe con tus palabras qué significa "${question.slice(0, 60)}".\n3. Busca un ejemplo de la vida diaria.\n\n¿Me cuentas qué entendiste del paso 1? *(Respuesta de demostración)*`;
 }
-function ActiveChat({ notebook, history }: { notebook: Notebook; history: UIMessage[] }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: "/api/study-chat",
-        body: { notebookId: notebook.id, subject: notebook.name, notes: notebook.notes },
-        headers: async () => {
-          const { data } = await supabase.auth.getSession();
-          return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
-        },
-      }),
-    [notebook.id, notebook.name, notebook.notes],
-  );
-  const { messages, sendMessage, status, stop, error } = useChat({
-    id: notebook.id,
-    messages: history,
-    transport,
-    onError: (e) => toast.error(e.message),
-  });
-  useEffect(() => {
-    if (status === "ready") ref.current?.focus();
-  }, [status]);
+
+export function StudyChat({ notebook }: { notebook: Notebook }) {
+  const [messages, setMessages] = useState<ChatMsg[]>(() => memory.get(notebook.id) ?? []);
+  const [thinking, setThinking] = useState(false);
+  const push = (list: ChatMsg[]) => {
+    memory.set(notebook.id, list);
+    setMessages(list);
+  };
   return (
     <div className="chat-panel">
       <Conversation className="flex-1 min-h-0">
@@ -109,47 +46,31 @@ function ActiveChat({ notebook, history }: { notebook: Notebook; history: UIMess
           {messages.map((m) => (
             <Message key={m.id} from={m.role}>
               <MessageContent className={m.role === "user" ? "chat-user" : ""}>
-                {m.parts.map((p, i) =>
-                  p.type === "text" ? (
-                    <MessageResponse key={i}>{p.text}</MessageResponse>
-                  ) : p.type === "reasoning" ? (
-                    <details key={i} className="text-xs text-muted-foreground">
-                      <summary>Proceso de orientación</summary>
-                      <MessageResponse>{p.text}</MessageResponse>
-                    </details>
-                  ) : null,
-                )}
+                <MessageResponse>{m.text}</MessageResponse>
               </MessageContent>
             </Message>
           ))}
-          {status === "submitted" && <Shimmer>Milo está pensando…</Shimmer>}
+          {thinking && <Shimmer>Milo está pensando…</Shimmer>}
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
-      {error && (
-        <p className="chat-error" role="alert">
-          {error.message}
-        </p>
-      )}
       <PromptInput
         onSubmit={async ({ text }) => {
-          if (!text.trim() || status === "submitted" || status === "streaming") return;
-          await sendMessage({ text });
-          ref.current?.focus();
+          if (!text.trim() || thinking) return;
+          const withUser = [...messages, { id: crypto.randomUUID(), role: "user" as const, text }];
+          push(withUser);
+          setThinking(true);
+          await new Promise((r) => setTimeout(r, 700));
+          push([
+            ...withUser,
+            { id: crypto.randomUUID(), role: "assistant", text: mockReply(text, notebook) },
+          ]);
+          setThinking(false);
         }}
       >
-        <PromptInputTextarea
-          ref={ref}
-          autoFocus
-          placeholder="Escribe tu duda de estudio…"
-          aria-label="Pregunta a Milo"
-        />
+        <PromptInputTextarea autoFocus placeholder="Escribe tu duda de estudio…" aria-label="Pregunta a Milo" />
         <PromptInputFooter className="justify-end">
-          <PromptInputSubmit
-            aria-label={status === "streaming" ? "Detener respuesta" : "Enviar pregunta"}
-            status={status}
-            onStop={() => void stop()}
-          />
+          <PromptInputSubmit aria-label="Enviar pregunta" status={thinking ? "submitted" : "ready"} />
         </PromptInputFooter>
       </PromptInput>
     </div>
