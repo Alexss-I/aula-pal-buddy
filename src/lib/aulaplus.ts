@@ -34,7 +34,8 @@ export type Notebook = {
   notes: string;
   tasks: { id: string; title: string; done: boolean }[];
 };
-export type Activity = { id: string; title: string; date: string; type: string; subject: string };
+export type Activity = { id: string; title: string; date: string; type: string; subject: string; tone?: string };
+export const toneOptions = ["mint", "sky", "peach", "lilac", "yellow", "coral", "rose", "teal", "ocean", "lime", "sand", "grape"] as const;
 export type Student = { id: string; name: string; points: number; tone: string };
 export type Workspace = {
   notebooks: Notebook[];
@@ -171,4 +172,13 @@ export function createInitialClassrooms(): Classroom[] {
       announcements: initialWorkspace.announcements.map((a) => ({ ...a, id: `class-${i}-${a.id}` })),
     },
   }));
+}
+
+/** Inicio limpio: una sola clase vacía, sin cuadernos ni alumnos. */
+export function createEmptyClassrooms(): Classroom[] {
+  return [createClassroom("class-0", "Mi clase")];
+}
+export type UserProfile = { name: string; email: string; lang: string };
+export function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 }
