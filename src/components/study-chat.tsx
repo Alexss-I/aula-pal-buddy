@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Paperclip, Globe } from "lucide-react";
 import {
   Conversation,
   ConversationContent,
@@ -12,28 +13,51 @@ import {
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
 import { Shimmer } from "@/components/ai-elements/shimmer";
+import { Button } from "@/components/ui/button";
 import type { Notebook } from "@/lib/aulaplus";
-import mascot from "@/assets/mascot.png";
 import { tutorReply } from "@/lib/tutor";
+import { readStudyFile } from "@/lib/file-reader";
+import mascot from "@/assets/mascot.png";
 
 type ChatMsg = { id: string; role: "user" | "assistant"; text: string };
 
 // Conversaciones en memoria por cuaderno (se mantienen mientras la página esté abierta).
 const memory = new Map<string, ChatMsg[]>();
+const ACCEPT = ".pdf,.docx,.xlsx,.xls,.ods,.pptx,.txt,.md,.csv,.json,image/*";
 
-function mockReply(question: string, n: Notebook) { return tutorReply(question, n.notes, n.name); }
-function _old(question: string, n: Notebook) {
-  const first = n.notes.split(".")[0]?.trim();
-  return `¡Buena pregunta sobre **${n.name}**! 🌱\n\nSegún tus apuntes: _${first || "aún no tienes apuntes"}_.\n\nVamos paso a paso:\n1. Lee de nuevo la idea principal.\n2. Escribe con tus palabras qué significa "${question.slice(0, 60)}".\n3. Busca un ejemplo de la vida diaria.\n\n¿Me cuentas qué entendiste del paso 1? *(Respuesta de demostración)*`;
-}
-
-export function StudyChat({ notebook }: { notebook: Notebook }) {
+export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes: (text: string) => void }) {
   const [messages, setMessages] = useState<ChatMsg[]>(() => memory.get(notebook.id) ?? []);
   const [thinking, setThinking] = useState(false);
+  const [lastQuestion, setLastQuestion] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
   const push = (list: ChatMsg[]) => {
     memory.set(notebook.id, list);
     setMessages(list);
   };
+  const say = (list: ChatMsg[], text: string) =>
+    push([...list, { id: crypto.randomUUID(), role: "assistant", text }]);
+
+  async function onFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setThinking(true);
+    let list = messages;
+    for (const file of Array.from(files)) {
+      list = [...list, { id: crypto.randomUUID(), role: "user", text: `📎 ${file.name}` }];
+      push(list);
+      const r = await readStudyFile(file);
+      if (r.text.trim()) {
+        addNotes(`📎 ${r.name}\n${r.text.trim().slice(0, 20000)}`);
+        const preview = r.text.replace(/\s+/g, " ").slice(0, 220);
+        list = [...list, { id: crypto.randomUUID(), role: "assistant", text: `¡Listo! Leí tu archivo **${r.kind}** "${r.name}" 📚 y lo añadí a tus apuntes.\n\n> ${preview}…\n\nAhora puedes preguntarme sobre él o crear un mapa mental o un cuestionario en **Estudio+**.` }];
+      } else {
+        list = [...list, { id: crypto.randomUUID(), role: "assistant", text: `Recibí "${r.name}". ${r.note ?? "No encontré texto."}` }];
+      }
+      push(list);
+    }
+    setThinking(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
   return (
     <div className="chat-panel">
       <Conversation className="flex-1 min-h-0">
@@ -41,8 +65,10 @@ export function StudyChat({ notebook }: { notebook: Notebook }) {
           {!messages.length && (
             <div className="chat-empty">
               <img src={mascot} alt="Milo" width={1024} height={1024} />
-              <h3>¡Una buena pregunta lo cambia todo!</h3>
-              <p className="text-muted-foreground">¿Qué te gustaría entender de {notebook.name}?</p>
+              <h3>¡Pregúntame lo que quieras!</h3>
+              <p className="text-muted-foreground">
+                Matemáticas, ciencias, historia, anatomía, psicología… o sube un archivo de {notebook.name}.
+              </p>
             </div>
           )}
           {messages.map((m) => (
@@ -56,22 +82,30 @@ export function StudyChat({ notebook }: { notebook: Notebook }) {
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>
+      <input ref={fileRef} type="file" hidden multiple accept={ACCEPT} onChange={(e) => void onFiles(e.target.files)} />
       <PromptInput
         onSubmit={async ({ text }) => {
           if (!text.trim() || thinking) return;
           const withUser = [...messages, { id: crypto.randomUUID(), role: "user" as const, text }];
           push(withUser);
+          setLastQuestion(text);
           setThinking(true);
-          await new Promise((r) => setTimeout(r, 700));
-          push([
-            ...withUser,
-            { id: crypto.randomUUID(), role: "assistant", text: mockReply(text, notebook) },
-          ]);
+          await new Promise((r) => setTimeout(r, 500));
+          say(withUser, tutorReply(text, notebook.notes, notebook.name));
           setThinking(false);
         }}
       >
         <PromptInputTextarea autoFocus placeholder="Escribe tu duda de estudio…" aria-label="Pregunta a Milo" />
-        <PromptInputFooter className="justify-end">
+        <PromptInputFooter className="justify-between">
+          <div className="flex gap-1">
+            <Button type="button" variant="ghost" size="sm" onClick={() => fileRef.current?.click()} aria-label="Subir archivo">
+              <Paperclip />Archivo
+            </Button>
+            <Button type="button" variant="ghost" size="sm" disabled={!lastQuestion} aria-label="Buscar en la web"
+              onClick={() => window.open(`https://es.wikipedia.org/w/index.php?search=${encodeURIComponent(lastQuestion)}`, "_blank", "noopener")}>
+              <Globe />Buscar en la web
+            </Button>
+          </div>
           <PromptInputSubmit aria-label="Enviar pregunta" status={thinking ? "submitted" : "ready"} />
         </PromptInputFooter>
       </PromptInput>
