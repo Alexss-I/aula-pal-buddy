@@ -56,8 +56,15 @@ import { Pet, speciesLabels } from "./pet";
 export { Pet } from "./pet";
 import { ThemeSettings } from "./theme-settings";
 import { ClassroomControls } from "./classroom-controls";
+import { LoginScreen } from "./login-screen";
+import { HelpCenter } from "./help-center";
+import { StudyTools } from "./study-tools";
+import { languages, t as tr } from "@/lib/i18n";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
-  createInitialClassrooms,
+  createEmptyClassrooms,
+  toneOptions,
+  type UserProfile,
   createClassroom,
   updateClassWorkspace,
   petSpecies,
@@ -76,7 +83,7 @@ import { toast } from "sonner";
 import { StudyChat } from "./study-chat";
 
 const icons = [Calculator, Leaf, MessageCircle, Landmark];
-const tones = ["mint", "sky", "peach", "lilac"];
+const tones = toneOptions;
 export function Logo() {
   return (
     <div className="logo">
@@ -134,7 +141,7 @@ function Modal({
 }
 
 export function AulaPlus() {
-  const [classes, setClasses] = useState(createInitialClassrooms);
+  const [classes, setClasses] = useState(createEmptyClassrooms);
   const [activeId, setActiveId] = useState("class-0");
   const activeClass = classes.find((c) => c.id === activeId) ?? classes[0];
   const workspace = activeClass?.workspace;
@@ -151,7 +158,12 @@ export function AulaPlus() {
   const [tone, setTone] = useState("mint");
   const [species, setSpecies] = useState<PetSpecies>("monster");
   const [help, setHelp] = useState(false);
-  const [userName] = useState("Alex");
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [profileMode, setProfileMode] = useState<"account" | "settings" | "edit">("account");
+  const [draftName, setDraftName] = useState("");
+  const userName = user?.name ?? "";
+  const lang = user?.lang ?? "es";
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<Student | null>(null);
   const [notifications, setNotifications] = useState(false);
@@ -159,8 +171,8 @@ export function AulaPlus() {
   useEffect(() => {
     const timeout = setTimeout(() => {
       setLoading(false);
-      setRoleModal(true);
-    }, 650);
+      setLoginOpen(true);
+    }, 1400);
     return () => clearTimeout(timeout);
   }, []);
   async function save() {
@@ -185,15 +197,15 @@ export function AulaPlus() {
     setWorkspace((w) => ({ ...w, notebooks: w.notebooks.map((n) => (n.id === nb.id ? nb : n)) }));
   const notebook = workspace.notebooks.find((n) => n.id === selected);
   const studentNav = [
-    { key: "notebooks", label: "Mis cuadernos", icon: LayoutGrid },
-    { key: "calendar", label: "Mi calendario", icon: CalendarDays },
-    { key: "pets", label: "Mis mascotas", icon: PawPrint },
+    { key: "notebooks", label: tr(lang, "notebooks"), icon: LayoutGrid },
+    { key: "calendar", label: tr(lang, "calendar"), icon: CalendarDays },
+    { key: "pets", label: tr(lang, "pets"), icon: PawPrint },
   ];
   const teacherNav = [
-    { key: "class", label: "Mi clase", icon: School },
-    { key: "groups", label: "Grupos de trabajo", icon: Users },
-    { key: "tools", label: "Herramientas de aula", icon: Timer },
-    { key: "announcements", label: "Tablón de anuncios", icon: Megaphone },
+    { key: "class", label: tr(lang, "class"), icon: School },
+    { key: "groups", label: tr(lang, "groups"), icon: Users },
+    { key: "tools", label: tr(lang, "tools"), icon: Timer },
+    { key: "announcements", label: tr(lang, "announcements"), icon: Megaphone },
     { key: "calendar", label: "Calendario", icon: CalendarDays },
   ];
   const navItems = role === "student" ? studentNav : teacherNav;
@@ -228,6 +240,7 @@ export function AulaPlus() {
           <p>Preparando tu próxima aventura…</p>
         </div>
       )}
+      {loginOpen && !user && <LoginScreen onDone={(name, email) => { setUser({ name, email, lang: "es" }); setLoginOpen(false); setRoleModal(true); }} />}
       <div className="app-shell">
         <div
           className={`mobile-overlay ${mobile ? "open" : ""}`}
@@ -252,7 +265,7 @@ export function AulaPlus() {
           <div className="sidebar-label">UN POCO MÁS</div>
           <Button variant="ghost" className="nav-item" onClick={() => setHelp(true)}>
             <HelpCircle />
-            Centro de ayuda
+            {tr(lang, "help")}
           </Button>
           <div className="side-mascot">
             <Pet />
@@ -263,23 +276,25 @@ export function AulaPlus() {
             <span className="avatar">{userName.slice(0, 1)}</span>
             <div>
               <strong className="text-xs">
-                {userName} Martínez
+                {userName}
               </strong>
               <br />
               <small>
                 {role === "student" ? "Estudiante" : "Profesor"}
               </small>
             </div>
-            <Button
-              title="Mi cuenta"
-              aria-label="Mi cuenta"
-              variant="ghost"
-              size="icon"
-              className="ml-auto"
-              onClick={() => setProfileOpen(true)}
-            >
-              <ChevronDown />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button title="Mi cuenta" aria-label="Mi cuenta" variant="ghost" size="icon" className="ml-auto">
+                  <ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top">
+                {([["account", "Cuenta"], ["settings", "Configuración"], ["edit", "Editar Perfil"]] as const).map(([m, label]) => (
+                  <DropdownMenuItem key={m} onSelect={() => { setProfileMode(m); setDraftName(userName); setProfileOpen(true); }}>{label}</DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </aside>
         <div className="main-shell">
@@ -364,7 +379,7 @@ export function AulaPlus() {
                 <div className="page-heading">
                   <div>
                     <h1>
-                      ¡Hola, profe {userName}! <span className="text-primary">☀</span>
+                      {tr(lang, "hello")}, profe {userName}! <span className="text-primary">☀</span>
                     </h1>
                     <p className="subtitle">Tu clase está lista para una nueva aventura.</p>
                   </div>
@@ -436,7 +451,7 @@ export function AulaPlus() {
                 <div className="page-heading">
                   <div>
                     <h1>
-                      ¡Hola, {userName}! <span className="text-primary">☀</span>
+                      {tr(lang, "hello")}, {userName}! <span className="text-primary">☀</span>
                     </h1>
                     <p className="subtitle">Un buen día para aprender algo increíble.</p>
                   </div>
@@ -659,30 +674,9 @@ export function AulaPlus() {
         open={help}
         onOpenChange={setHelp}
         title="Estamos para acompañarte"
-        description="Preguntas frecuentes de AulaPlus"
+        description="Preguntas frecuentes, guías y respuestas rápidas"
       >
-        <div className="help-list">
-          <details>
-            <summary>¿Cómo crece mi mascota?</summary>
-            <p>
-              Cada cuaderno tiene su propia mascota. Perfecto suma 2 puntos, Bien suma 1 y Necesita
-              Repaso suma 0. Cada 10 puntos alcanza un nuevo nivel.
-            </p>
-          </details>
-          <details>
-            <summary>¿Se guardan mis avances?</summary>
-            <p>
-              Los cambios se conservan durante esta visita. Al recargar, vuelven los datos de muestra.
-            </p>
-          </details>
-          <details>
-            <summary>¿Qué significa el modo profesor?</summary>
-            <p>
-              Es un espacio de demostración con una clase ficticia. Sus evaluaciones no modifican
-              las cuentas de estudiantes reales.
-            </p>
-          </details>
-        </div>
+        <HelpCenter />
       </Modal>
       <Modal
         open={notifications}
@@ -700,17 +694,25 @@ export function AulaPlus() {
       <Modal
         open={profileOpen}
         onOpenChange={setProfileOpen}
-        title={`¡Hola, ${userName}!`}
-        description="Modo demo: tus cambios viven en esta sesión del navegador."
+        title={profileMode === "account" ? "Mi cuenta" : profileMode === "settings" ? "Configuración" : "Editar Perfil"}
+        description="Modo demo: tus datos viven en esta pestaña."
       >
         <div className="modal-form">
-          <Button onClick={() => void save()} disabled={saving}>
-            <Cloud />
-            Guardar mis avances
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Clase y nombres de muestra. El cambio de rol no otorga acceso a otras cuentas.
-          </span>
+          {profileMode === "account" && <>
+            <p><strong>{userName}</strong><br /><span className="text-muted-foreground">{user?.email}</span></p>
+            <p className="text-sm">Rol: {role === "student" ? "Estudiante" : "Profesor"}</p>
+            <Button onClick={() => void save()} disabled={saving}><Cloud />Guardar mis avances</Button>
+          </>}
+          {profileMode === "edit" && <form className="modal-form" onSubmit={(e) => { e.preventDefault(); if (!draftName.trim() || !user) return; setUser({ ...user, name: draftName.trim() }); toast.success("Nombre actualizado"); setProfileOpen(false); }}>
+            <label>Tu nombre<input className="field" value={draftName} onChange={(e) => setDraftName(e.target.value)} maxLength={40} required /></label>
+            <Button type="submit"><Check />Guardar</Button>
+          </form>}
+          {profileMode === "settings" && <label>Idioma
+            <select className="field" value={lang} onChange={(e) => { if (user) setUser({ ...user, lang: e.target.value }); document.documentElement.lang = e.target.value; }}>
+              {languages.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+            </select>
+            <small className="text-muted-foreground">El menú y los saludos cambian de idioma; el resto del contenido sigue en español por ahora.</small>
+          </label>}
         </div>
       </Modal>
       <Modal
@@ -718,7 +720,7 @@ export function AulaPlus() {
         onOpenChange={(v) => {
           if (!v) setFeedback(null);
         }}
-        title={feedback ? `¡Un paso más, ${feedback.name.split(" ")[0] || "Alex"}!` : "Evaluación"}
+        title={feedback ? `¡Un paso más, ${feedback.name.split(" ")[0] || ""}!` : "Evaluación"}
         description="Celebra habilidades y acompaña el aprendizaje."
       >
         <div className="modal-form">
@@ -898,6 +900,7 @@ function NotebookView({
           { id: "summary", label: "Resúmenes", icon: FileText },
           { id: "notes", label: "Apuntes", icon: BookOpen },
           { id: "tasks", label: "Tareas", icon: ListTodo },
+          { id: "studyplus", label: "Estudio+", icon: Sparkles },
         ].map((t) => (
           <Button
             variant="ghost"
@@ -913,7 +916,9 @@ function NotebookView({
       <div className="study-layout">
         <section>
           {tab === "chat" ? (
-            <StudyChat key={n.id} notebook={n} />
+            <StudyChat key={n.id} notebook={n} addNotes={(txt) => update({ ...n, notes: n.notes ? `${n.notes}\n\n${txt}` : txt })} />
+          ) : tab === "studyplus" ? (
+            <StudyTools notebook={n} />
           ) : tab === "flashcards" ? (
             <>
               <Button variant="ghost" className="flashcard" onClick={() => setFlipped((v) => !v)}>
@@ -1148,6 +1153,7 @@ function CalendarView({
   const [title, setTitle] = useState("");
   const [type, setType] = useState("Examen");
   const [subject, setSubject] = useState(notebooks[0]?.name || "General");
+  const [evTone, setEvTone] = useState<string>("mint");
   const monthNames = [
     "Enero",
     "Febrero",
@@ -1231,7 +1237,7 @@ function CalendarView({
                   {activities
                     .filter((a) => a.date === iso)
                     .map((a) => (
-                      <span className="day-event" key={a.id} title={a.title}>
+                      <span className={`day-event tone-${a.tone ?? "mint"}`} key={a.id} title={a.title}>
                         {a.title}
                       </span>
                     ))}
@@ -1278,7 +1284,7 @@ function CalendarView({
             if (!title.trim()) return;
             update([
               ...activities,
-              { id: crypto.randomUUID(), title: title.trim(), date, type, subject },
+              { id: crypto.randomUUID(), title: title.trim(), date, type, subject, tone: evTone },
             ]);
             setTitle("");
             setModal(false);
@@ -1316,11 +1322,20 @@ function CalendarView({
           <label>
             Asignatura
             <select className="field" value={subject} onChange={(e) => setSubject(e.target.value)}>
+              <option>General</option>
               {notebooks.map((n) => (
                 <option key={n.id}>{n.name}</option>
               ))}
             </select>
           </label>
+          <label>Color</label>
+          <div className="color-options">
+            {toneOptions.map((c) => (
+              <Button type="button" variant="ghost" key={c} aria-label={`Color ${c}`} className={`color-choice tone-${c} ${evTone === c ? "selected" : ""}`} onClick={() => setEvTone(c)}>
+                {evTone === c && <Check size={14} />}
+              </Button>
+            ))}
+          </div>
           <Button type="submit">
             <CalendarDays />
             Agregar actividad

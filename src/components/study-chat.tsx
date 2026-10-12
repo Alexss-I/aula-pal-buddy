@@ -41,12 +41,13 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
     if (!files?.length) return;
     setThinking(true);
     let list = messages;
+    const added: string[] = [];
     for (const file of Array.from(files)) {
       list = [...list, { id: crypto.randomUUID(), role: "user", text: `📎 ${file.name}` }];
       push(list);
       const r = await readStudyFile(file);
       if (r.text.trim()) {
-        addNotes(`📎 ${r.name}\n${r.text.trim().slice(0, 20000)}`);
+        added.push(`📎 ${r.name}\n${r.text.trim().slice(0, 20000)}`);
         const preview = r.text.replace(/\s+/g, " ").slice(0, 220);
         list = [...list, { id: crypto.randomUUID(), role: "assistant", text: `¡Listo! Leí tu archivo **${r.kind}** "${r.name}" 📚 y lo añadí a tus apuntes.\n\n> ${preview}…\n\nAhora puedes preguntarme sobre él o crear un mapa mental o un cuestionario en **Estudio+**.` }];
       } else {
@@ -54,6 +55,7 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
       }
       push(list);
     }
+    if (added.length) addNotes(added.join("\n\n"));
     setThinking(false);
     if (fileRef.current) fileRef.current.value = "";
   }
