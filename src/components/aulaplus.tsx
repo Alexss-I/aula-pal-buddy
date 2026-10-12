@@ -25,6 +25,7 @@ import {
   Shuffle,
   Megaphone,
   Check,
+  Sparkles,
   X,
   Menu,
   Lightbulb,

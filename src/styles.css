@@ -1007,15 +1007,16 @@ select {
 }
 .day-number {
   font-weight: 750;
-  font-size: 12px;
+  font-size: 14px;
 }
 .day.selected {
   background: var(--secondary);
 }
 .day-event {
-  font-size: 9px;
-  background: var(--mint);
-  color: var(--mint-ink);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--tone, var(--mint));
+  color: var(--ink, var(--mint-ink));
   padding: 3px;
   border-radius: 3px;
   margin-top: 5px;
@@ -1322,7 +1323,7 @@ select {
     padding: 4px;
   }
   .day-event {
-    font-size: 8px;
+    font-size: 10px;
   }
   .role-option {
     height: 135px;
@@ -1361,3 +1362,93 @@ select {
     transition: none !important;
   }
 }
+.tone-yellow {
+  --tone: oklch(0.93 0.11 95);
+  --ink: oklch(0.42 0.1 80);
+}
+.pill.yellow {
+  background: oklch(0.93 0.11 95);
+  color: oklch(0.42 0.1 80);
+}
+.tone-coral {
+  --tone: oklch(0.86 0.09 30);
+  --ink: oklch(0.45 0.15 30);
+}
+.pill.coral {
+  background: oklch(0.86 0.09 30);
+  color: oklch(0.45 0.15 30);
+}
+.tone-rose {
+  --tone: oklch(0.88 0.08 355);
+  --ink: oklch(0.45 0.15 355);
+}
+.pill.rose {
+  background: oklch(0.88 0.08 355);
+  color: oklch(0.45 0.15 355);
+}
+.tone-teal {
+  --tone: oklch(0.87 0.08 190);
+  --ink: oklch(0.4 0.09 195);
+}
+.pill.teal {
+  background: oklch(0.87 0.08 190);
+  color: oklch(0.4 0.09 195);
+}
+.tone-ocean {
+  --tone: oklch(0.82 0.1 245);
+  --ink: oklch(0.38 0.14 255);
+}
+.pill.ocean {
+  background: oklch(0.82 0.1 245);
+  color: oklch(0.38 0.14 255);
+}
+.tone-lime {
+  --tone: oklch(0.91 0.13 130);
+  --ink: oklch(0.42 0.12 135);
+}
+.pill.lime {
+  background: oklch(0.91 0.13 130);
+  color: oklch(0.42 0.12 135);
+}
+.tone-sand {
+  --tone: oklch(0.9 0.05 75);
+  --ink: oklch(0.45 0.07 60);
+}
+.pill.sand {
+  background: oklch(0.9 0.05 75);
+  color: oklch(0.45 0.07 60);
+}
+.tone-grape {
+  --tone: oklch(0.8 0.11 310);
+  --ink: oklch(0.4 0.16 310);
+}
+.pill.grape {
+  background: oklch(0.8 0.11 310);
+  color: oklch(0.4 0.16 310);
+}
+.color-choice { background: var(--tone); }
+.login-screen { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: radial-gradient(circle at 20% 10%, var(--mint), transparent 45%), radial-gradient(circle at 85% 90%, var(--sky), transparent 45%), var(--background); animation: login-in .6s ease; }
+.login-card { width: min(420px, 100%); background: var(--card); border-radius: 28px; padding: 28px; box-shadow: 0 20px 60px oklch(0 0 0 / .12); text-align: center; display: grid; gap: 12px; }
+.login-card h1 { font-size: 26px; font-weight: 900; }
+.login-card .modal-form { text-align: left; }
+.login-pets { display: flex; justify-content: center; gap: 6px; }
+.login-pets .pet { width: 74px; height: 74px; animation: pet-bounce 1.6s ease-in-out infinite; }
+.login-pets .pet:nth-child(2) { animation-delay: .2s; } .login-pets .pet:nth-child(3) { animation-delay: .4s; }
+@keyframes login-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes pet-bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.tool-switch { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.help-center { display: grid; gap: 4px; max-height: 65vh; overflow-y: auto; }
+.help-search { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.help-list ol { padding-left: 20px; list-style: decimal; }
+.study-tools, .tools-empty { background: var(--card); border-radius: 20px; padding: 20px; }
+.mind-map { display: grid; gap: 18px; justify-items: center; }
+.mind-center { background: var(--tone); color: var(--ink); padding: 14px 26px; border-radius: 999px; font-weight: 900; font-size: 18px; }
+.mind-branches { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; width: 100%; }
+.mind-branch { border: 2px dashed var(--border); border-radius: 16px; padding: 12px; }
+.mind-branch strong { text-transform: capitalize; } .mind-branch p { font-size: 13px; color: var(--muted-foreground); }
+.quiz { display: grid; gap: 14px; } .quiz-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.quiz-right { background: var(--mint) !important; color: var(--mint-ink) !important; opacity: 1 !important; }
+.quiz-wrong { background: var(--destructive) !important; color: var(--background) !important; opacity: 1 !important; }
+.data-table { width: 100%; font-size: 14px; border-collapse: collapse; }
+.data-table th, .data-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.audio-summary ul { list-style: disc; padding-left: 20px; margin-bottom: 14px; display: grid; gap: 6px; }
