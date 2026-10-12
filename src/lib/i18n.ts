@@ -21,5 +21,5 @@ const dict: Record<string, Partial<Record<Key, string>>> = {
   qu: { notebooks: "Qillqanaykuna", calendar: "Pacha unanchana", pets: "Uywaykuna", class: "Yachaywasiy", groups: "Huñukuna", tools: "Llamk'anakuna", announcements: "Willakuykuna", help: "Yanapay", hello: "Allillanchu" },
 };
 export function t(lang: string, key: Key) {
-  return dict[lang]?.[key] ?? dict.es![key]!;
+  return dict[lang]?.[key] ?? dict["es"]![key]!;
 }
