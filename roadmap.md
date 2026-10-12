@@ -8,7 +8,7 @@
 - [x] Add five distinct pet species and notebook pet selection.
 - [x] Add light, black/neon, school blue and custom-image backgrounds.
 - [x] Add independent classrooms and teacher roster management; verify interactions.- [ ] Login local (correo + nombre) con animación, luego selector de rol; nombre reemplaza "Alex"; inicio limpio sin cuadernos/alumnos
-- [ ] Menú de perfil (Cuenta, Configuración, Editar Perfil) con cambio de nombre e idioma (10 idiomas)
-- [ ] Centro de ayuda con FAQs interactivas y guías
-- [ ] Calendario: fechas más legibles; paleta de colores ampliada
-- [ ] Tutor híbrido: base local amplia, lectura de archivos, mapas mentales, cuestionarios, tablas
+- [x] Menú de perfil (Cuenta, Configuración, Editar Perfil) con cambio de nombre e idioma (10 idiomas)
+- [x] Centro de ayuda con FAQs interactivas y guías
+- [x] Calendario: fechas más legibles; paleta de colores ampliada
+- [x] Tutor híbrido: base local amplia, lectura de archivos, mapas mentales, cuestionarios, tablas

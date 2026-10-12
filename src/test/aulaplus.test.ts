@@ -63,3 +63,21 @@ describe("tutor general", () => {
     expect(tutorReply("dame un consejo de estudio", "", "Arte")).toContain("Pomodoro");
   });
 });
+
+import { createEmptyClassrooms, isValidEmail } from "@/lib/aulaplus";
+import { makeQuiz } from "@/lib/tutor";
+describe("inicio limpio y login", () => {
+  it("empieza sin cuadernos ni alumnos", () => {
+    const [c] = createEmptyClassrooms();
+    expect(c!.workspace.notebooks).toHaveLength(0);
+    expect(c!.workspace.students).toHaveLength(0);
+  });
+  it("valida el correo", () => {
+    expect(isValidEmail("ana@colegio.pe")).toBe(true);
+    expect(isValidEmail("ana@")).toBe(false);
+  });
+  it("crea cuestionario desde apuntes", () => {
+    const q = makeQuiz("La fotosíntesis transforma energía solar. Las plantas utilizan agua y dióxido. La clorofila captura energía en las hojas verdes. Las raíces absorben agua del suelo húmedo.");
+    expect(q.length).toBeGreaterThan(0);
+  });
+});
