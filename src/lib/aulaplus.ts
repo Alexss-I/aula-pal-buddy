@@ -33,6 +33,7 @@ export type Notebook = {
   streak: number;
   notes: string;
   tasks: { id: string; title: string; done: boolean }[];
+  sources?: { id: string; title: string; kind: "link" | "texto" | "archivo" }[];
 };
 export type Activity = { id: string; title: string; date: string; type: string; subject: string; tone?: string };
 export const toneOptions = ["mint", "sky", "peach", "lilac", "yellow", "coral", "rose", "teal", "ocean", "lime", "sand", "grape"] as const;
