@@ -74,8 +74,33 @@ export function tutorReply(question: string, notes: string, subject: string): st
   const related = sentences.filter((s) => words.some((w) => norm(s).includes(w)));
   const fromNotes = related.length ? `\n\n📒 **En tus apuntes:** _${related.slice(0, 2).join(" ")}_` : "";
   if (topic) return topic.text + fromNotes + "\n\n¿Te preparo una pregunta de práctica?";
-  if (related.length) return `¡Buena pregunta! Según tus apuntes de **${subject}**:\n\n_${related.slice(0, 2).join(" ")}_\n\nIntenta explicarlo con tus palabras y buscar un ejemplo de la vida diaria. ¿Lo intentamos juntos?`;
-  return `¡Buena pregunta! 🌱 Pensémosla como lo haría un buen estudiante:\n\n1. **Identifica la idea clave** de "${question.trim().slice(0, 80)}".\n2. **Divide el problema** en partes pequeñas.\n3. **Busca un ejemplo** cercano a tu vida.\n\nCuéntame un poco más (¿de qué tema o materia es?) y te lo explico con detalle. *(Tutor de demostración)*`;
+  if (related.length) return `¡Buena pregunta! Según tus fuentes de **${subject}**:\n\n_${related.slice(0, 2).join(" ")}_\n\nIntenta explicarlo con tus palabras y buscar un ejemplo de la vida diaria. ¿Lo intentamos juntos?`;
+  return `¡Buena pregunta! 🌱 Todavía no tengo información sobre "${question.trim().slice(0, 80)}" en las fuentes de este cuaderno.\n\n${WEB_OFFER}`;
+}
+
+export const WEB_OFFER = "¿Te gustaría que realice una búsqueda en la web sobre este tema para darte la respuesta?";
+
+/** Preguntas de seguimiento sugeridas al final de cada respuesta. */
+export function followUps(question: string, subject: string): string[] {
+  const q = norm(question);
+  if (solveMath(question)) return ["¿Me explicas el procedimiento paso a paso?", "Dame un ejercicio parecido", "¿Dónde se usa esto en la vida real?"];
+  const topic = topics.find((t) => t.keys.some((k) => q.includes(k)));
+  const name = topic ? topic.keys[0] : subject;
+  return [`¿Exploramos las principales ramas de ${name}?`, `¿Cómo se relaciona ${name} con otras áreas?`, "Hazme una pregunta de práctica"];
+}
+
+/** Busca un resumen en Wikipedia en español (API pública con CORS). */
+export async function webSearch(query: string): Promise<{ title: string; text: string; url: string } | null> {
+  try {
+    const s = await fetch(`https://es.wikipedia.org/w/rest.php/v1/search/page?q=${encodeURIComponent(query)}&limit=1`).then((r) => r.json());
+    const key = s?.pages?.[0]?.key;
+    if (!key) return null;
+    const p = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(key)}`).then((r) => r.json());
+    if (!p?.extract) return null;
+    return { title: p.title, text: p.extract, url: p.content_urls?.desktop?.page ?? `https://es.wikipedia.org/wiki/${key}` };
+  } catch {
+    return null;
+  }
 }
 
 // ---------- Herramientas de estudio locales ----------
