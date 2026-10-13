@@ -19,7 +19,7 @@ export function SourcesPanel({ notebook: n, update }: { notebook: Notebook; upda
   };
   async function addUrl(e: React.FormEvent) {
     e.preventDefault();
-    if (!/^https?:\/\/\S+\.\S+/.test(url.trim())) return toast.error("Pega un enlace válido (https://…)");
+    if (!/^https?:\/\/\S+\.\S+/.test(url.trim())) { toast.error("Pega un enlace válido (https://…)"); return; }
     setBusy(true);
     try {
       const r = await fetchSource({ data: { url: url.trim() } });
