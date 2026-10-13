@@ -11,6 +11,6 @@
 
 - AulaPlus uses a browser-safe domain module for notebook scoring and grouping so the same rules are unit tested.
 - Student and teacher views are prototype modes, not authorization roles; feedback affects fictional demo students only.
-- The active prototype uses React memory-only state and local tutor replies; it must not call auth, database or AI services, so previews work without connections.
+- The prototype keeps app state in React and mirrors it to localStorage (one versioned key); tutor replies are local, web lookups use public Wikipedia and a URL-reader server function; no auth, database or AI services so previews work without connections.
 - Classroom workspaces own notebooks, activities, student rosters and announcements; all updates target the active classroom ID so classes cannot leak changes into each other.
 - Pet model rendering, appearance controls and classroom controls live in focused components; shared classroom and pet types remain in the browser-safe domain module so isolation can be unit tested.

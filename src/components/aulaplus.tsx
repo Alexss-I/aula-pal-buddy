@@ -58,6 +58,7 @@ export { Pet } from "./pet";
 import { ThemeSettings } from "./theme-settings";
 import { ClassroomControls } from "./classroom-controls";
 import { LoginScreen } from "./login-screen";
+import { SourcesPanel } from "./sources-panel";
 import { HelpCenter } from "./help-center";
 import { StudyTools } from "./study-tools";
 import { languages, t as tr } from "@/lib/i18n";
@@ -141,6 +142,8 @@ function Modal({
   );
 }
 
+const STORE_KEY = "aulaplus:v1";
+
 export function AulaPlus() {
   const [classes, setClasses] = useState(createEmptyClassrooms);
   const [activeId, setActiveId] = useState("class-0");
@@ -169,18 +172,30 @@ export function AulaPlus() {
   const [feedback, setFeedback] = useState<Student | null>(null);
   const [notifications, setNotifications] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [restored, setRestored] = useState(false);
   useEffect(() => {
+    let saved: { user?: UserProfile; classes?: typeof classes; activeId?: string; role?: Role } | null = null;
+    try { saved = JSON.parse(localStorage.getItem(STORE_KEY) ?? "null"); } catch { saved = null; }
+    if (saved?.classes?.length) setClasses(saved.classes);
+    if (saved?.activeId) setActiveId(saved.activeId);
+    if (saved?.role) { setRole(saved.role); setNav(saved.role === "student" ? "notebooks" : "class"); }
+    if (saved?.user) setUser(saved.user);
+    setRestored(true);
     const timeout = setTimeout(() => {
       setLoading(false);
-      setLoginOpen(true);
+      if (!saved?.user) setLoginOpen(true);
     }, 1400);
     return () => clearTimeout(timeout);
   }, []);
+  useEffect(() => {
+    if (!restored) return;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ user, classes, activeId, role })); } catch { /* almacenamiento lleno */ }
+  }, [restored, user, classes, activeId, role]);
   async function save() {
     setSaving(true);
     await new Promise((r) => setTimeout(r, 300));
     setSaving(false);
-    toast.success("Avances guardados en esta sesión (modo demo).");
+    toast.success("Avances guardados en este navegador.");
   }
   const changeNav = (key: string) => {
     setNav(key);
@@ -899,6 +914,7 @@ function NotebookView({
           { id: "chat", label: "Chat de orientación", icon: MessageCircle },
           { id: "flashcards", label: "Flashcards", icon: Layers },
           { id: "summary", label: "Resúmenes", icon: FileText },
+          { id: "sources", label: "Fuentes", icon: FileText },
           { id: "notes", label: "Apuntes", icon: BookOpen },
           { id: "tasks", label: "Tareas", icon: ListTodo },
           { id: "studyplus", label: "Estudio+", icon: Sparkles },
@@ -920,46 +936,26 @@ function NotebookView({
             <StudyChat key={n.id} notebook={n} addNotes={(txt) => update({ ...n, notes: n.notes ? `${n.notes}\n\n${txt}` : txt })} />
           ) : tab === "studyplus" ? (
             <StudyTools notebook={n} />
+          ) : tab === "sources" ? (
+            <SourcesPanel notebook={n} update={update} />
           ) : tab === "flashcards" ? (
-            <>
-              <Button variant="ghost" className="flashcard" onClick={() => setFlipped((v) => !v)}>
-                <small>{flipped ? "LA RESPUESTA" : "PON A PRUEBA TU MEMORIA"}</small>
-                {flipped
-                  ? cards[card % cards.length]?.answer || ""
-                  : cards[card % cards.length]?.question || ""}
-                <small>
-                  <RotateCcw size={15} className="inline mr-2" />
-                  Voltear tarjeta
-                </small>
-              </Button>
-              <div className="flash-nav">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Tarjeta anterior"
-                  onClick={() => {
-                    setCard((v) => (v - 1 + cards.length) % cards.length);
-                    setFlipped(false);
-                  }}
-                >
-                  <ChevronLeft />
-                </Button>
-                <span>
-                  {(card % cards.length) + 1} / {cards.length}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Siguiente tarjeta"
-                  onClick={() => {
-                    setCard((v) => (v + 1) % cards.length);
-                    setFlipped(false);
-                  }}
-                >
-                  <ChevronRight />
-                </Button>
+            <div className="flash-studio">
+              <div className="flash-meta">
+                <span className="pill lilac">Tarjeta {(card % cards.length) + 1} de {cards.length}</span>
+                <div className="flash-dots">{cards.slice(0, 12).map((_, i) => <span key={i} className={i === card % cards.length ? "on" : ""} />)}</div>
               </div>
-            </>
+              <button type="button" className={`flip-card ${flipped ? "flipped" : ""}`} onClick={() => setFlipped((v) => !v)} aria-label="Voltear tarjeta">
+                <span className="flip-inner">
+                  <span className="flip-face front"><small>PREGUNTA</small><strong>{cards[card % cards.length]?.question}</strong><em><RotateCcw size={14} /> Toca para voltear</em></span>
+                  <span className="flip-face back"><small>RESPUESTA</small><strong>{cards[card % cards.length]?.answer}</strong><em><RotateCcw size={14} /> Toca para volver</em></span>
+                </span>
+              </button>
+              <div className="flash-nav">
+                <Button variant="outline" size="icon" aria-label="Tarjeta anterior" onClick={() => { setCard((v) => (v - 1 + cards.length) % cards.length); setFlipped(false); }}><ChevronLeft /></Button>
+                <Button variant="secondary" onClick={() => setFlipped((v) => !v)}><RotateCcw />Voltear</Button>
+                <Button variant="outline" size="icon" aria-label="Siguiente tarjeta" onClick={() => { setCard((v) => (v + 1) % cards.length); setFlipped(false); }}><ChevronRight /></Button>
+              </div>
+            </div>
           ) : tab === "summary" ? (
             <div className="study-text">
               <h2>Las ideas más importantes</h2>
@@ -997,7 +993,7 @@ function NotebookView({
                 </Button>
               </div>
               <textarea
-                className="field min-h-80 study-text"
+                className="field notes-editor study-text"
                 aria-label="Mis apuntes"
                 placeholder="Escribe aquí lo que aprendiste hoy…"
                 value={note}

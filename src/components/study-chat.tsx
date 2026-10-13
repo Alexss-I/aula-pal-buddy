@@ -15,11 +15,11 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Button } from "@/components/ui/button";
 import type { Notebook } from "@/lib/aulaplus";
-import { tutorReply } from "@/lib/tutor";
+import { tutorReply, followUps, webSearch, WEB_OFFER } from "@/lib/tutor";
 import { readStudyFile } from "@/lib/file-reader";
 import mascot from "@/assets/mascot.png";
 
-type ChatMsg = { id: string; role: "user" | "assistant"; text: string };
+type ChatMsg = { id: string; role: "user" | "assistant"; text: string; chips?: string[]; webQuery?: string };
 
 // Conversaciones en memoria por cuaderno (se mantienen mientras la página esté abierta).
 const memory = new Map<string, ChatMsg[]>();
@@ -36,6 +36,31 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
   };
   const say = (list: ChatMsg[], text: string) =>
     push([...list, { id: crypto.randomUUID(), role: "assistant", text }]);
+
+  async function ask(text: string) {
+    if (!text.trim() || thinking) return;
+    const withUser = [...messages, { id: crypto.randomUUID(), role: "user" as const, text }];
+    push(withUser);
+    setLastQuestion(text);
+    setThinking(true);
+    await new Promise((r) => setTimeout(r, 450));
+    const reply = tutorReply(text, notebook.notes, notebook.name);
+    const offer = reply.includes(WEB_OFFER);
+    push([...withUser, { id: crypto.randomUUID(), role: "assistant", text: reply, chips: offer ? [] : followUps(text, notebook.name), ...(offer ? { webQuery: text } : {}) }]);
+    setThinking(false);
+  }
+
+  async function searchWeb(query: string) {
+    const withUser = [...messages, { id: crypto.randomUUID(), role: "user" as const, text: "Sí, busca en la web 🌐" }];
+    push(withUser);
+    setThinking(true);
+    const r = await webSearch(query);
+    const text = r
+      ? `Esto encontré en la web 🌐 (**${r.title}**):\n\n${r.text}\n\n[Ver fuente](${r.url})`
+      : "No encontré un resultado claro en la web 😕. Prueba a escribir la pregunta con otras palabras o pega un enlace en **Fuentes**.";
+    push([...withUser, { id: crypto.randomUUID(), role: "assistant", text, chips: followUps(query, notebook.name) }]);
+    setThinking(false);
+  }
 
   async function onFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -73,10 +98,16 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
               </p>
             </div>
           )}
-          {messages.map((m) => (
+          {messages.map((m, i) => (
             <Message key={m.id} from={m.role}>
               <MessageContent className={m.role === "user" ? "chat-user" : ""}>
                 <MessageResponse>{m.text}</MessageResponse>
+                {i === messages.length - 1 && !thinking && (m.webQuery || m.chips?.length) ? (
+                  <div className="chat-chips">
+                    {m.webQuery && <Button size="sm" onClick={() => void searchWeb(m.webQuery!)}><Globe />Sí, buscar en la web</Button>}
+                    {m.chips?.map((c) => <Button key={c} size="sm" variant="outline" onClick={() => void ask(c)}>{c}</Button>)}
+                  </div>
+                ) : null}
               </MessageContent>
             </Message>
           ))}
@@ -85,18 +116,7 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
         <ConversationScrollButton />
       </Conversation>
       <input ref={fileRef} type="file" hidden multiple accept={ACCEPT} onChange={(e) => void onFiles(e.target.files)} />
-      <PromptInput
-        onSubmit={async ({ text }) => {
-          if (!text.trim() || thinking) return;
-          const withUser = [...messages, { id: crypto.randomUUID(), role: "user" as const, text }];
-          push(withUser);
-          setLastQuestion(text);
-          setThinking(true);
-          await new Promise((r) => setTimeout(r, 500));
-          say(withUser, tutorReply(text, notebook.notes, notebook.name));
-          setThinking(false);
-        }}
-      >
+      <PromptInput onSubmit={({ text }) => ask(text)}>
         <PromptInputTextarea autoFocus placeholder="Escribe tu duda de estudio…" aria-label="Pregunta a Milo" />
         <PromptInputFooter className="justify-between">
           <div className="flex gap-1">

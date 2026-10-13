@@ -61,6 +61,7 @@ describe("tutor general", () => {
   });
   it("da consejos de estudio", () => {
     expect(tutorReply("dame un consejo de estudio", "", "Arte")).toContain("Pomodoro");
+    expect(tutorReply("quién inventó el ajedrez", "", "Arte")).toContain("búsqueda en la web");
   });
 });
 

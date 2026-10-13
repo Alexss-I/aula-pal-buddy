@@ -27,7 +27,7 @@ export function LoginScreen({ onDone }: { onDone: (name: string, email: string) 
           {error && <p className="text-destructive text-sm">{error}</p>}
           <Button type="submit">Continuar<ArrowRight /></Button>
         </form>
-        <small className="text-muted-foreground">Modo demo: tus datos solo viven en esta pestaña.</small>
+        <small className="text-muted-foreground">Tus datos se guardan solo en este navegador.</small>
       </div>
     </div>
   );
