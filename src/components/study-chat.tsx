@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paperclip, Globe } from "lucide-react";
 import {
   Conversation,
@@ -94,7 +94,7 @@ export function StudyChat({ notebook, addNotes, userName = "" }: { notebook: Not
           {!messages.length && (
             <div className="chat-empty">
               <img src={mascot} alt="Milo" width={1024} height={1024} />
-              <h3>¡Pregúntame lo que quieras!</h3>
+              <h3>{first ? `¡Hola, ${first}! Pregúntame lo que quieras` : "¡Pregúntame lo que quieras!"}</h3>
               <p className="text-muted-foreground">
                 Matemáticas, ciencias, historia, anatomía, psicología… o sube un archivo de {notebook.name}.
               </p>
