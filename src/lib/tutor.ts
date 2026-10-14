@@ -103,6 +103,46 @@ export async function webSearch(query: string): Promise<{ title: string; text: s
   }
 }
 
+export type WebHit = { title: string; text: string; url: string };
+/** Varios resultados de Wikipedia para citar con notas al pie. */
+export async function webSearchMany(query: string, limit = 3): Promise<WebHit[]> {
+  try {
+    const s = await fetch(`https://es.wikipedia.org/w/rest.php/v1/search/page?q=${encodeURIComponent(query)}&limit=${limit}`).then((r) => r.json());
+    const keys: string[] = (s?.pages ?? []).map((p: { key: string }) => p.key).slice(0, limit);
+    const hits = await Promise.all(keys.map(async (key) => {
+      try {
+        const p = await fetch(`https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(key)}`).then((r) => r.json());
+        return p?.extract ? { title: p.title as string, text: p.extract as string, url: (p.content_urls?.desktop?.page as string) ?? `https://es.wikipedia.org/wiki/${key}` } : null;
+      } catch { return null; }
+    }));
+    return hits.filter((h): h is WebHit => !!h);
+  } catch { return []; }
+}
+
+/** Respuesta con citas [1], notas al pie y enlace a Google. */
+export function formatWebAnswer(query: string, hits: WebHit[]): string {
+  if (!hits.length) return `No encontré un resultado claro en la web 😕. Puedes [buscarlo en Google](https://www.google.com/search?q=${encodeURIComponent(query)}) o pegar un enlace en **Fuentes**.`;
+  const [main, ...rest] = hits;
+  const body = [`### 🌐 Lo que encontré sobre "${query.slice(0, 80)}"`, "", `${main!.text} [¹](${main!.url})`];
+  const sup = ["¹", "²", "³", "⁴"];
+  if (rest.length) body.push("", "**También relacionado:**", ...rest.map((h, i) => `- **${h.title}** — ${sentences(h.text)[0] ?? h.text.slice(0, 160)} [${sup[i + 1]}](${h.url})`));
+  body.push("", "---", "**Notas al pie**", ...hits.map((h, i) => `${sup[i]} [${h.title} — Wikipedia](${h.url})`), `🔎 [Ver más resultados en Google](https://www.google.com/search?q=${encodeURIComponent(query)})`);
+  return body.join("\n");
+}
+
+/** Extrae resumen estructurado, puntos clave e ideas principales de una fuente. */
+export function digestSource(text: string) {
+  const s = sentences(text);
+  const terms = keyTerms(text, 8);
+  const summary = summarize(text, 3);
+  const points = terms.slice(0, 6).map((t) => {
+    const x = s.find((y) => y.toLowerCase().includes(t)) ?? "";
+    return `**${t[0]!.toUpperCase()}${t.slice(1)}:** ${x.slice(0, 180)}`;
+  }).filter((p) => !p.endsWith(":** "));
+  const ideas = terms.slice(0, 5).map((t) => t[0]!.toUpperCase() + t.slice(1));
+  return { summary, points, ideas };
+}
+
 // ---------- Herramientas de estudio locales ----------
 export function sentences(text: string) {
   return text.replace(/\s+/g, " ").split(/(?<=[.!?])\s+/).map((x) => x.trim()).filter((x) => x.length > 15);
