@@ -372,6 +372,7 @@ export function AulaPlus() {
               <NotebookView
                 key={notebook.id}
                 notebook={notebook}
+                userName={userName}
                 update={updateNotebook}
                 back={() => setSelected(null)}
               />
@@ -871,19 +872,21 @@ function NotebookView({
   notebook: n,
   update,
   back,
+  userName = "",
 }: {
   notebook: Notebook;
   update: (n: Notebook) => void;
   back: () => void;
+  userName?: string;
 }) {
   const [tab, setTab] = useState("chat");
-  const [card, setCard] = useState(0);
+  const card = n.studio?.card ?? 0;
   const [flipped, setFlipped] = useState(false);
   const [note, setNote] = useState(n.notes);
   const [task, setTask] = useState("");
-  const sentences = n.notes.split(/[.!?]\s*/).filter(Boolean);
+  const sentences = n.notes.split(/[.!?]\s*/).filter((s) => s.trim().length > 3);
   const cards = sentences.length
-    ? sentences.map((s, i) => ({
+    ? sentences.slice(0, 40).map((s, i) => ({
         question: `¿Qué recuerdas de la idea ${i + 1} en ${n.name}?`,
         answer: s,
       }))
@@ -893,6 +896,17 @@ function NotebookView({
           answer: "Añade tus apuntes y crea tu primera idea de estudio.",
         },
       ];
+  const known = n.studio?.known ?? [];
+  const review = n.studio?.review ?? [];
+  const cur = card % cards.length;
+  const goCard = (i: number) => { setFlipped(false); update({ ...n, studio: { ...n.studio, card: (i + cards.length) % cards.length } }); };
+  const mark = (kind: "known" | "review") => {
+    const k = known.filter((x) => x !== cur), r = review.filter((x) => x !== cur);
+    (kind === "known" ? k : r).push(cur);
+    setFlipped(false);
+    update({ ...n, studio: { ...n.studio, known: k, review: r, card: (cur + 1) % cards.length } });
+    toast.success(kind === "known" ? "¡Genial! Tarjeta dominada 💚" : "La repasaremos pronto 📌");
+  };
   return (
     <>
       <Button variant="ghost" className="px-0 text-muted-foreground mb-4" onClick={back}>
@@ -933,17 +947,19 @@ function NotebookView({
       <div className="study-layout">
         <section>
           {tab === "chat" ? (
-            <StudyChat key={n.id} notebook={n} addNotes={(txt) => update({ ...n, notes: n.notes ? `${n.notes}\n\n${txt}` : txt })} />
+            <StudyChat key={n.id} notebook={n} userName={userName} addNotes={(txt) => update({ ...n, notes: n.notes ? `${n.notes}\n\n${txt}` : txt })} />
           ) : tab === "studyplus" ? (
-            <StudyTools notebook={n} />
+            <StudyTools notebook={n} update={update} />
           ) : tab === "sources" ? (
             <SourcesPanel notebook={n} update={update} />
           ) : tab === "flashcards" ? (
             <div className="flash-studio">
               <div className="flash-meta">
                 <span className="pill lilac">Tarjeta {(card % cards.length) + 1} de {cards.length}</span>
-                <div className="flash-dots">{cards.slice(0, 12).map((_, i) => <span key={i} className={i === card % cards.length ? "on" : ""} />)}</div>
+                <span className="pill mint"><Check size={14} />Lo sé: {known.length}</span>
+                <span className="pill peach">Repasar: {review.length}</span>
               </div>
+              <div className="flash-progress" aria-label="Progreso"><span style={{ width: `${Math.round(((known.length + review.length) / cards.length) * 100)}%` }} /></div>
               <button type="button" className={`flip-card ${flipped ? "flipped" : ""}`} onClick={() => setFlipped((v) => !v)} aria-label="Voltear tarjeta">
                 <span className="flip-inner">
                   <span className="flip-face front"><small>PREGUNTA</small><strong>{cards[card % cards.length]?.question}</strong><em><RotateCcw size={14} /> Toca para voltear</em></span>
@@ -951,10 +967,12 @@ function NotebookView({
                 </span>
               </button>
               <div className="flash-nav">
-                <Button variant="outline" size="icon" aria-label="Tarjeta anterior" onClick={() => { setCard((v) => (v - 1 + cards.length) % cards.length); setFlipped(false); }}><ChevronLeft /></Button>
-                <Button variant="secondary" onClick={() => setFlipped((v) => !v)}><RotateCcw />Voltear</Button>
-                <Button variant="outline" size="icon" aria-label="Siguiente tarjeta" onClick={() => { setCard((v) => (v + 1) % cards.length); setFlipped(false); }}><ChevronRight /></Button>
+                <Button variant="outline" size="icon" aria-label="Tarjeta anterior" onClick={() => goCard(card - 1)}><ChevronLeft /></Button>
+                <Button variant="outline" className="flash-review" onClick={() => mark("review")}>Necesita repaso</Button>
+                <Button className="flash-known" onClick={() => mark("known")}><Check />Lo sé</Button>
+                <Button variant="outline" size="icon" aria-label="Siguiente tarjeta" onClick={() => goCard(card + 1)}><ChevronRight /></Button>
               </div>
+              {known.length + review.length > 0 && <Button variant="ghost" size="sm" className="justify-self-center" onClick={() => update({ ...n, studio: { ...n.studio, known: [], review: [], card: 0 } })}><RotateCcw />Reiniciar mazo</Button>}
             </div>
           ) : tab === "summary" ? (
             <div className="study-text">

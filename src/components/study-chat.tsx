@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paperclip, Globe } from "lucide-react";
 import {
   Conversation,
@@ -15,27 +15,31 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Button } from "@/components/ui/button";
 import type { Notebook } from "@/lib/aulaplus";
-import { tutorReply, followUps, webSearch, WEB_OFFER } from "@/lib/tutor";
+import { tutorReply, followUps, webSearchMany, formatWebAnswer, WEB_OFFER } from "@/lib/tutor";
 import { readStudyFile } from "@/lib/file-reader";
 import mascot from "@/assets/mascot.png";
 
 type ChatMsg = { id: string; role: "user" | "assistant"; text: string; chips?: string[]; webQuery?: string };
 
-// Conversaciones en memoria por cuaderno (se mantienen mientras la página esté abierta).
-const memory = new Map<string, ChatMsg[]>();
+// Conversación por cuaderno guardada en localStorage (sobrevive a recargas).
+const chatKey = (id: string) => `aulaplus-chat-v1:${id}`;
+function loadChat(id: string): ChatMsg[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(chatKey(id)) ?? "[]"); } catch { return []; }
+}
 const ACCEPT = ".pdf,.docx,.xlsx,.xls,.ods,.pptx,.txt,.md,.csv,.json,image/*";
 
-export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes: (text: string) => void }) {
-  const [messages, setMessages] = useState<ChatMsg[]>(() => memory.get(notebook.id) ?? []);
+export function StudyChat({ notebook, addNotes, userName = "" }: { notebook: Notebook; addNotes: (text: string) => void; userName?: string }) {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  useEffect(() => { setMessages(loadChat(notebook.id)); }, [notebook.id]);
   const [thinking, setThinking] = useState(false);
   const [lastQuestion, setLastQuestion] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const push = (list: ChatMsg[]) => {
-    memory.set(notebook.id, list);
+    try { localStorage.setItem(chatKey(notebook.id), JSON.stringify(list.slice(-80))); } catch { /* lleno */ }
     setMessages(list);
   };
-  const say = (list: ChatMsg[], text: string) =>
-    push([...list, { id: crypto.randomUUID(), role: "assistant", text }]);
+  const first = userName.split(" ")[0] ?? "";
 
   async function ask(text: string) {
     if (!text.trim() || thinking) return;
@@ -44,7 +48,8 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
     setLastQuestion(text);
     setThinking(true);
     await new Promise((r) => setTimeout(r, 450));
-    const reply = tutorReply(text, notebook.notes, notebook.name);
+    let reply = tutorReply(text, notebook.notes, notebook.name);
+    if (first && /^¡Hola!/.test(reply)) reply = reply.replace("¡Hola!", `¡Hola, ${first}!`);
     const offer = reply.includes(WEB_OFFER);
     push([...withUser, { id: crypto.randomUUID(), role: "assistant", text: reply, chips: offer ? [] : followUps(text, notebook.name), ...(offer ? { webQuery: text } : {}) }]);
     setThinking(false);
@@ -54,11 +59,8 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
     const withUser = [...messages, { id: crypto.randomUUID(), role: "user" as const, text: "Sí, busca en la web 🌐" }];
     push(withUser);
     setThinking(true);
-    const r = await webSearch(query);
-    const text = r
-      ? `Esto encontré en la web 🌐 (**${r.title}**):\n\n${r.text}\n\n[Ver fuente](${r.url})`
-      : "No encontré un resultado claro en la web 😕. Prueba a escribir la pregunta con otras palabras o pega un enlace en **Fuentes**.";
-    push([...withUser, { id: crypto.randomUUID(), role: "assistant", text, chips: followUps(query, notebook.name) }]);
+    const hits = await webSearchMany(query, 3);
+    push([...withUser, { id: crypto.randomUUID(), role: "assistant", text: formatWebAnswer(query, hits), chips: followUps(query, notebook.name) }]);
     setThinking(false);
   }
 
@@ -92,7 +94,7 @@ export function StudyChat({ notebook, addNotes }: { notebook: Notebook; addNotes
           {!messages.length && (
             <div className="chat-empty">
               <img src={mascot} alt="Milo" width={1024} height={1024} />
-              <h3>¡Pregúntame lo que quieras!</h3>
+              <h3>{first ? `¡Hola, ${first}! Pregúntame lo que quieras` : "¡Pregúntame lo que quieras!"}</h3>
               <p className="text-muted-foreground">
                 Matemáticas, ciencias, historia, anatomía, psicología… o sube un archivo de {notebook.name}.
               </p>

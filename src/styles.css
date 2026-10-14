@@ -1476,3 +1476,28 @@ select {
 .flip-face strong { font-size: 24px; line-height: 1.35; color: var(--foreground); }
 .flip-face em { font-style: normal; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; opacity: .7; }
 @media (max-width: 640px) { .flip-face strong { font-size: 19px; } .chat-panel { height: 70vh; } }
+.flash-progress { height: 8px; border-radius: 99px; background: var(--muted); overflow: hidden; }
+.flash-progress span { display: block; height: 100%; background: var(--primary); transition: width .4s; }
+.source-card { display: block !important; }
+.source-head { display: flex; align-items: center; gap: 8px; }
+.source-digest { display: grid; gap: 12px; padding: 12px 6px 6px; font-size: 15px; line-height: 1.55; }
+.source-digest h4 { display: flex; align-items: center; gap: 6px; font-weight: 900; margin-bottom: 6px; }
+.source-digest ul { list-style: disc; padding-left: 20px; display: grid; gap: 4px; }
+.mind-toggle { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 6px; }
+.mind-branch.open { border-style: solid; border-color: var(--primary); }
+.mind-branch ul { list-style: disc; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; margin-top: 6px; }
+.audio-player { display: grid; gap: 12px; padding: 18px; border-radius: 20px; background: var(--muted); }
+.audio-top { display: flex; align-items: center; gap: 12px; }
+.audio-pet { width: 64px; height: 64px; border-radius: 16px; object-fit: cover; }
+.audio-pet.talking { animation: pet-bob .6s ease-in-out infinite alternate; }
+@keyframes pet-bob { to { transform: translateY(-4px) rotate(-3deg); } }
+.audio-wave { display: flex; gap: 3px; align-items: center; height: 36px; }
+.audio-wave span { width: 4px; height: 8px; border-radius: 4px; background: var(--primary); opacity: .5; }
+.audio-wave.on span { animation: wave 0.8s ease-in-out infinite alternate; opacity: 1; }
+@keyframes wave { to { height: 32px; } }
+.audio-range { width: 100%; accent-color: var(--primary); }
+.audio-controls { display: flex; justify-content: center; align-items: center; gap: 12px; }
+.audio-transcript { list-style: decimal; padding-left: 22px; display: grid; gap: 6px; font-size: 15px; }
+.audio-transcript li.on { color: var(--primary); font-weight: 800; }
+.chat-panel { height: max(640px, calc(100vh - 220px)); }
+.chat-panel, .notes-editor { font-size: 17px; }
